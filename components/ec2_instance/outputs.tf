@@ -34,3 +34,13 @@ output "private_key_openssh" {
   value       = try(tls_private_key.this[0].private_key_openssh, null)
   sensitive   = true
 }
+
+output "ami_id" {
+  description = "The AMI ID used for the EC2 instance"
+  value       = local.ami_id
+}
+
+output "ami_architecture" {
+  description = "The architecture of the selected AMI"
+  value       = local.arch_normalized
+}

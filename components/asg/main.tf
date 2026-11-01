@@ -22,6 +22,10 @@ resource "aws_security_group" "asg" {
   tags = merge(var.tags, { Name = "${var.name}-asg-sg" })
 }
 
+locals {
+  arch_normalized = lower(var.architecture) == "arm64" ? "arm64" : "x86_64"
+}
+
 # Dynamically fetch latest Amazon Linux 2023 AMI if var.ami_id is not provided
 data "aws_ami" "amazon_linux_2023" {
   count       = var.ami_id == null ? 1 : 0
@@ -30,7 +34,12 @@ data "aws_ami" "amazon_linux_2023" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-2023.*-x86_64"]
+    values = ["al2023-ami-2023.*-${local.arch_normalized}"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = [local.arch_normalized]
   }
 
   filter {
@@ -40,14 +49,15 @@ data "aws_ami" "amazon_linux_2023" {
 }
 
 locals {
-  ami_id = var.ami_id != null ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
+  instance_type = var.instance_type != null ? var.instance_type : (local.arch_normalized == "arm64" ? "t4g.micro" : "t3.micro")
+  ami_id        = var.ami_id != null ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
 }
 
 # 2. Launch Template (Instance blueprint)
 resource "aws_launch_template" "this" {
   name_prefix   = "${var.name}-lt-"
   image_id      = local.ami_id
-  instance_type = var.instance_type
+  instance_type = local.instance_type
 
   iam_instance_profile {
     name = var.iam_instance_profile

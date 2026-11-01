@@ -19,10 +19,20 @@ variable "ami_id" {
   default     = null
 }
 
-variable "instance_type" {
-  description = "EC2 instance size"
+variable "architecture" {
+  description = "CPU architecture for the dynamic AMI lookup: 'x86_64' (amd64) or 'arm64'."
   type        = string
-  default     = "t3.micro"
+  default     = "x86_64"
+  validation {
+    condition     = contains(["x86_64", "amd64", "arm64"], lower(var.architecture))
+    error_message = "Architecture must be one of: 'x86_64', 'amd64', or 'arm64'."
+  }
+}
+
+variable "instance_type" {
+  description = "EC2 instance size. If omitted, defaults to t4g.micro for arm64 and t3.micro for x86_64/amd64."
+  type        = string
+  default     = null
 }
 
 variable "app_port" {

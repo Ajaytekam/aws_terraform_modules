@@ -25,6 +25,10 @@ resource "aws_key_pair" "this" {
   tags       = var.tags
 }
 
+locals {
+  arch_normalized = lower(var.architecture) == "arm64" ? "arm64" : "x86_64"
+}
+
 # Dynamically fetch latest Amazon Linux 2023 AMI if var.ami_id is not provided
 data "aws_ami" "amazon_linux_2023" {
   count       = var.ami_id == null ? 1 : 0
@@ -33,7 +37,12 @@ data "aws_ami" "amazon_linux_2023" {
 
   filter {
     name   = "name"
-    values = ["al2023-ami-2023.*-x86_64"]
+    values = ["al2023-ami-2023.*-${local.arch_normalized}"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = [local.arch_normalized]
   }
 
   filter {
@@ -43,9 +52,10 @@ data "aws_ami" "amazon_linux_2023" {
 }
 
 locals {
-  ami_id     = var.ami_id != null ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
-  key_name   = var.key_name != null && !var.create_key_pair && var.public_key == null ? var.key_name : try(aws_key_pair.this[0].key_name, null)
-  enable_ssh = var.enable_ssh != null ? var.enable_ssh : (local.key_name != null)
+  instance_type = var.instance_type != null ? var.instance_type : (local.arch_normalized == "arm64" ? "t4g.micro" : "t3.micro")
+  ami_id        = var.ami_id != null ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
+  key_name      = var.key_name != null && !var.create_key_pair && var.public_key == null ? var.key_name : try(aws_key_pair.this[0].key_name, null)
+  enable_ssh    = var.enable_ssh != null ? var.enable_ssh : (local.key_name != null)
 }
 
 # 2. Security Group with optional SSH ingress
@@ -78,7 +88,7 @@ resource "aws_security_group" "this" {
 # 3. EC2 Instance
 resource "aws_instance" "this" {
   ami                         = local.ami_id
-  instance_type               = var.instance_type
+  instance_type               = local.instance_type
   subnet_id                   = var.subnet_id
   key_name                    = local.key_name
   associate_public_ip_address = var.associate_public_ip_address

@@ -120,17 +120,18 @@ module "db_secret" {
 
 #### EC2 Instance
 - **Module:** `components/ec2_instance`
-- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, dynamic AMI resolution, and public/private IP outputs.
+- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, dynamic AMI resolution for both **x86_64 / amd64** and **arm64 (AWS Graviton)** architectures, and public/private IP outputs.
 
-**Option A: Auto-generate a private key pair for SSH**
+**Option A: Auto-generate a private key pair with x86_64 / amd64 (Default)**
 ```hcl
 module "ec2" {
   source                  = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
   name                    = "app-server"
   vpc_id                  = module.vpc.vpc_id
   subnet_id               = module.vpc.public_subnet_ids[0]
-  # ami_id                = "ami-xxxxxx"            # Optional: defaults to latest Amazon Linux 2023
-  instance_type           = "t3.micro"
+  # architecture          = "x86_64"                # Optional: "x86_64" (amd64) or "arm64" (defaults to "x86_64")
+  # instance_type         = "t3.micro"              # Optional: defaults to t3.micro for x86_64, t4g.micro for arm64
+  # ami_id                = "ami-xxxxxx"            # Optional: dynamically fetched if omitted
   volume_size             = 20
   create_key_pair         = true                    # Generates a new 4096-bit RSA key pair
   enable_ssh              = true                    # Opens port 22 in security group
@@ -152,6 +153,21 @@ output "ec2_public_ip" {
 }
 ```
 
+**Option B: ARM64 Graviton Instance (`arm64`)**
+```hcl
+module "ec2_arm" {
+  source                  = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
+  name                    = "app-server-arm"
+  vpc_id                  = module.vpc.vpc_id
+  subnet_id               = module.vpc.public_subnet_ids[0]
+  architecture            = "arm64"                 # Automatically fetches latest Amazon Linux 2023 ARM64 AMI
+  instance_type           = "t4g.micro"             # Defaults to t4g.micro for arm64
+  create_key_pair         = true
+  enable_ssh              = true
+  ssh_allowed_cidr_blocks = ["0.0.0.0/0"]
+}
+```
+
 > **How to SSH into your instance using the generated key:**
 > ```bash
 > # 1. Extract and save the private key
@@ -162,7 +178,7 @@ output "ec2_public_ip" {
 > ssh -i ec2-key.pem ec2-user@<ec2_public_ip>
 > ```
 
-**Option B: Use an existing AWS Key Pair or local public key**
+**Option C: Use an existing AWS Key Pair or local public key**
 ```hcl
 module "ec2" {
   source    = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
@@ -214,8 +230,9 @@ module "asg" {
   name                  = "web-asg"
   vpc_id                = module.vpc.vpc_id
   private_subnet_ids    = module.vpc.private_subnet_ids
-  # ami_id              = "ami-xxxxxx" # Optional: defaults to latest Amazon Linux 2023
-  instance_type         = "t3.micro"
+  # architecture        = "x86_64"     # Optional: "x86_64" (amd64) or "arm64" (defaults to "x86_64")
+  # instance_type       = "t3.micro"   # Optional: defaults to t3.micro for x86_64, t4g.micro for arm64
+  # ami_id              = "ami-xxxxxx" # Optional: dynamically fetched if omitted
   app_port              = 80
   alb_security_group_id = module.alb.alb_security_group_id
   target_group_arns     = [module.alb.target_group_arn]

@@ -30,13 +30,24 @@ provider "aws" {
 
 ## Available Modules & Sample Usages
 
+> [!TIP]
+> **GitHub Remote Sources**: All module examples below reference this repository directly using Terraform's GitHub source format with the double-slash (`//`) subdirectory syntax:
+> ```hcl
+> source = "github.com/Ajaytekam/aws_terraform_modules//components/<module_name>?ref=main"
+> ```
+> - For **private repositories** using SSH: `source = "git::git@github.com:Ajaytekam/aws_terraform_modules.git//components/<module_name>?ref=main"`
+> - For **local development**: replace the GitHub URL with the local path: `source = "./components/<module_name>"`
+> - For **production releases**: replace `?ref=main` with a Git release tag (e.g., `?ref=v1.0.0`).
+
+---
+
 ### 1. Networking & VPC
 - **Module:** `components/vpc`
 - **Description:** Deploys a VPC with public & private subnets across multiple AZs, Internet Gateway, NAT Gateway, NACLs, and baseline Security Groups.
 
 ```hcl
 module "vpc" {
-  source   = "./components/vpc"
+  source   = "github.com/Ajaytekam/aws_terraform_modules//components/vpc?ref=main"
   name     = "app-network"
   vpc_cidr = "10.0.0.0/16"
 
@@ -57,7 +68,7 @@ module "vpc" {
 
 ```hcl
 module "s3_bucket" {
-  source        = "./components/s3_buckets"
+  source        = "github.com/Ajaytekam/aws_terraform_modules//components/s3_buckets?ref=main"
   bucket_name   = "my-unique-app-data-bucket-2026"
   versioning    = true
   force_destroy = false
@@ -74,7 +85,7 @@ module "s3_bucket" {
 
 ```hcl
 module "kms" {
-  source                  = "./components/kms"
+  source                  = "github.com/Ajaytekam/aws_terraform_modules//components/kms?ref=main"
   alias_name              = "app-data-key"
   description             = "Customer managed KMS key for data encryption"
   deletion_window_in_days = 30
@@ -91,7 +102,7 @@ module "kms" {
 
 ```hcl
 module "db_secret" {
-  source                  = "./components/secret_manager"
+  source                  = "github.com/Ajaytekam/aws_terraform_modules//components/secret_manager?ref=main"
   secret_name             = "app/database/credentials"
   description             = "Database admin credentials"
   secret_value            = "StrongPassword123!"
@@ -109,12 +120,12 @@ module "db_secret" {
 
 #### EC2 Instance
 - **Module:** `components/ec2_instance`
-- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, configurable SSH security group ingress rule, and public/private IP outputs.
+- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, dynamic AMI resolution, and public/private IP outputs.
 
 **Option A: Auto-generate a private key pair for SSH**
 ```hcl
 module "ec2" {
-  source                  = "./components/ec2_instance"
+  source                  = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
   name                    = "app-server"
   vpc_id                  = module.vpc.vpc_id
   subnet_id               = module.vpc.public_subnet_ids[0]
@@ -154,11 +165,11 @@ output "ec2_public_ip" {
 **Option B: Use an existing AWS Key Pair or local public key**
 ```hcl
 module "ec2" {
-  source    = "./components/ec2_instance"
+  source    = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
   name      = "app-server"
   vpc_id    = module.vpc.vpc_id
   subnet_id = module.vpc.public_subnet_ids[0]
-  ami_id    = "ami-0c55b159cbfafe1f0"
+  # ami_id  = "ami-xxxxxx"
 
   # Choice 1: Existing key name already in AWS
   key_name  = "my-existing-aws-key"
@@ -178,7 +189,7 @@ module "ec2" {
 
 ```hcl
 module "alb" {
-  source              = "./components/alb"
+  source              = "github.com/Ajaytekam/aws_terraform_modules//components/alb?ref=main"
   name                = "web-alb"
   vpc_id              = module.vpc.vpc_id
   public_subnet_ids   = module.vpc.public_subnet_ids
@@ -199,7 +210,7 @@ module "alb" {
 
 ```hcl
 module "asg" {
-  source                = "./components/asg"
+  source                = "github.com/Ajaytekam/aws_terraform_modules//components/asg?ref=main"
   name                  = "web-asg"
   vpc_id                = module.vpc.vpc_id
   private_subnet_ids    = module.vpc.private_subnet_ids
@@ -229,7 +240,7 @@ module "asg" {
 
 ```hcl
 module "rds" {
-  source              = "./components/rds"
+  source              = "github.com/Ajaytekam/aws_terraform_modules//components/rds?ref=main"
   db_name             = "app-db-instance"
   database_name       = "appdb"
   vpc_id              = module.vpc.vpc_id
@@ -260,7 +271,7 @@ module "rds" {
 
 ```hcl
 module "lambda" {
-  source        = "./components/lambda_functions"
+  source        = "github.com/Ajaytekam/aws_terraform_modules//components/lambda_functions?ref=main"
   function_name = "order-processor"
   runtime       = "nodejs20.x"
   handler       = "index.handler"
@@ -283,7 +294,7 @@ module "lambda" {
 
 ```hcl
 module "ecr" {
-  source          = "./components/ecr"
+  source          = "github.com/Ajaytekam/aws_terraform_modules//components/ecr?ref=main"
   repository_name = "backend-service"
   mutability      = "MUTABLE"
 
@@ -299,7 +310,7 @@ module "ecr" {
 
 ```hcl
 module "eks" {
-  source             = "./components/eks"
+  source             = "github.com/Ajaytekam/aws_terraform_modules//components/eks?ref=main"
   cluster_name       = "main-eks-cluster"
   kubernetes_version = "1.29"
   subnet_ids         = module.vpc.private_subnet_ids
@@ -320,7 +331,7 @@ module "eks" {
 
 ```hcl
 module "api_gateway" {
-  source   = "./components/api_gateway"
+  source   = "github.com/Ajaytekam/aws_terraform_modules//components/api_gateway?ref=main"
   api_name = "customer-http-api"
 
   tags = {
@@ -335,7 +346,7 @@ module "api_gateway" {
 
 ```hcl
 module "cloudfront" {
-  source             = "./components/cloudfront"
+  source             = "github.com/Ajaytekam/aws_terraform_modules//components/cloudfront?ref=main"
   origin_domain_name = "my-bucket.s3.amazonaws.com"
   origin_id          = "s3-static-origin"
 
@@ -351,7 +362,7 @@ module "cloudfront" {
 
 ```hcl
 module "route53_record" {
-  source      = "./components/route53"
+  source      = "github.com/Ajaytekam/aws_terraform_modules//components/route53?ref=main"
   zone_id     = "Z0123456789ABCDEF"
   record_name = "api.example.com"
   record_type = "CNAME"
@@ -366,7 +377,7 @@ module "route53_record" {
 
 ```hcl
 module "amplify_app" {
-  source         = "./components/amplify"
+  source         = "github.com/Ajaytekam/aws_terraform_modules//components/amplify?ref=main"
   app_name       = "my-frontend-portal"
   repository_url = "https://github.com/my-org/portal-ui"
   github_token   = "ghp_PersonalAccessToken"
@@ -388,7 +399,7 @@ module "amplify_app" {
 
 ```hcl
 module "sqs" {
-  source                     = "./components/sqs"
+  source                     = "github.com/Ajaytekam/aws_terraform_modules//components/sqs?ref=main"
   name                       = "task-processing-queue"
   visibility_timeout_seconds = 30
   message_retention_seconds  = 345600 # 4 days
@@ -408,7 +419,7 @@ module "sqs" {
 
 ```hcl
 module "sns" {
-  source = "./components/sns"
+  source = "github.com/Ajaytekam/aws_terraform_modules//components/sns?ref=main"
   name   = "critical-alerts-topic"
   subscriptions = {
     devops_email = {
@@ -429,7 +440,7 @@ module "sns" {
 
 ```hcl
 module "eventbridge" {
-  source              = "./components/eventbridge"
+  source              = "github.com/Ajaytekam/aws_terraform_modules//components/eventbridge?ref=main"
   create_custom_bus   = true
   bus_name            = "app-event-bus"
   rule_name           = "daily-midnight-trigger"
@@ -453,7 +464,7 @@ module "eventbridge" {
 
 ```hcl
 module "iam_users" {
-  source    = "./components/iam_user"
+  source    = "github.com/Ajaytekam/aws_terraform_modules//components/iam_user?ref=main"
   usernames = ["developer.one", "developer.two"]
 
   tags = {
@@ -468,7 +479,7 @@ module "iam_users" {
 
 ```hcl
 module "s3_read_policy" {
-  source             = "./components/iam_policy"
+  source             = "github.com/Ajaytekam/aws_terraform_modules//components/iam_policy?ref=main"
   policy_name        = "S3ReadOnlyAppPolicy"
   policy_description = "Grants read access to S3"
   statements = [
@@ -492,7 +503,7 @@ module "s3_read_policy" {
 
 ```hcl
 module "iam_group" {
-  source      = "./components/iam_group"
+  source      = "github.com/Ajaytekam/aws_terraform_modules//components/iam_group?ref=main"
   group_name  = "engineering-team"
   members     = module.iam_users.user_names
   policy_arns = [
@@ -512,7 +523,7 @@ module "iam_group" {
 
 ```hcl
 module "cloudwatch" {
-  source            = "./components/cloudwatch"
+  source            = "github.com/Ajaytekam/aws_terraform_modules//components/cloudwatch?ref=main"
   log_group_name    = "/aws/app/backend-service"
   retention_in_days = 30
   create_cpu_alarm  = true
@@ -527,26 +538,26 @@ module "cloudwatch" {
 
 ### Complete End-to-End Architecture Example
 
-Below is a combined example showing how to compose multiple modules together (VPC + S3 + RDS + ALB + ASG):
+Below is a combined example showing how to compose multiple modules together from GitHub (VPC + S3 + RDS + ALB + ASG):
 
 ```hcl
 # 1. Base VPC
 module "vpc" {
-  source   = "./components/vpc"
+  source   = "github.com/Ajaytekam/aws_terraform_modules//components/vpc?ref=main"
   name     = "production"
   vpc_cidr = "10.0.0.0/16"
 }
 
 # 2. S3 Bucket for App Assets
 module "app_storage" {
-  source      = "./components/s3_buckets"
+  source      = "github.com/Ajaytekam/aws_terraform_modules//components/s3_buckets?ref=main"
   bucket_name = "my-company-prod-assets-2026"
   versioning  = true
 }
 
 # 3. Application Load Balancer
 module "alb" {
-  source            = "./components/alb"
+  source            = "github.com/Ajaytekam/aws_terraform_modules//components/alb?ref=main"
   name              = "prod-web-alb"
   vpc_id            = module.vpc.vpc_id
   public_subnet_ids = module.vpc.public_subnet_ids
@@ -555,7 +566,7 @@ module "alb" {
 
 # 4. Auto Scaling Group linked to ALB
 module "asg" {
-  source                = "./components/asg"
+  source                = "github.com/Ajaytekam/aws_terraform_modules//components/asg?ref=main"
   name                  = "prod-web-asg"
   vpc_id                = module.vpc.vpc_id
   private_subnet_ids    = module.vpc.private_subnet_ids
@@ -567,7 +578,7 @@ module "asg" {
 
 # 5. RDS Database in Private Subnets
 module "database" {
-  source         = "./components/rds"
+  source         = "github.com/Ajaytekam/aws_terraform_modules//components/rds?ref=main"
   db_name        = "prod-db-instance"
   database_name  = "proddb"
   vpc_id         = module.vpc.vpc_id
@@ -582,8 +593,11 @@ module "database" {
 ### Standard Terraform Workflow
 
 ```bash
-# Initialize and download provider plugins
+# Initialize and download modules from GitHub and provider plugins
 terraform init
+
+# If you push new changes to GitHub, upgrade cached modules:
+terraform init -upgrade
 
 # Validate configuration syntax
 terraform validate

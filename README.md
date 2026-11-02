@@ -120,9 +120,9 @@ module "db_secret" {
 
 #### EC2 Instance
 - **Module:** `components/ec2_instance`
-- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, dynamic AMI resolution for both **x86_64 / amd64** and **arm64 (AWS Graviton)** architectures, and public/private IP outputs.
+- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, dynamic AMI resolution (**x86_64 / amd64** and **arm64 Graviton**), startup initialization script (`user_data`), and conditional Port 22 rules for **both Security Group and Network ACL (NACL)** when `enable_public_ssh = true`.
 
-**Option A: Auto-generate a private key pair with x86_64 / amd64 (Default)**
+**Option A: Auto-generate a private key pair with SSH & Init Script**
 ```hcl
 module "ec2" {
   source                  = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
@@ -134,8 +134,17 @@ module "ec2" {
   # ami_id                = "ami-xxxxxx"            # Optional: dynamically fetched if omitted
   volume_size             = 20
   create_key_pair         = true                    # Generates a new 4096-bit RSA key pair
-  enable_ssh              = true                    # Opens port 22 in security group
+  enable_public_ssh       = true                    # Opens port 22 in BOTH Security Group & Subnet NACL
   ssh_allowed_cidr_blocks = ["0.0.0.0/0"]           # Or restrict to your IP: ["x.x.x.x/32"]
+
+  # Optional initialization / startup script
+  user_data = <<-EOF
+    #!/bin/bash
+    dnf update -y
+    dnf install -y docker git
+    systemctl enable --now docker
+    usermod -aG docker ec2-user
+  EOF
 
   tags = {
     Environment = "dev"
@@ -163,7 +172,7 @@ module "ec2_arm" {
   architecture            = "arm64"                 # Automatically fetches latest Amazon Linux 2023 ARM64 AMI
   instance_type           = "t4g.micro"             # Defaults to t4g.micro for arm64
   create_key_pair         = true
-  enable_ssh              = true
+  enable_public_ssh       = true                    # Opens port 22 in BOTH Security Group & Subnet NACL
   ssh_allowed_cidr_blocks = ["0.0.0.0/0"]
 }
 ```

@@ -65,8 +65,32 @@ variable "public_key" {
   default     = null
 }
 
+variable "user_data" {
+  description = "User data script / initialization script to execute on first boot"
+  type        = string
+  default     = null
+}
+
+variable "enable_public_ssh" {
+  description = "If true, opens port 22 in both the Security Group and the subnet's Network ACL"
+  type        = bool
+  default     = false
+}
+
+variable "network_acl_id" {
+  description = "Network ACL ID of the subnet. If omitted and enable_public_ssh is true, discovered automatically."
+  type        = string
+  default     = null
+}
+
+variable "nacl_ssh_rule_number" {
+  description = "Rule number for the SSH ingress rule in the Network ACL"
+  type        = number
+  default     = 90
+}
+
 variable "enable_ssh" {
-  description = "Allow inbound SSH traffic on port 22 in the security group. Defaults to true if a key is configured."
+  description = "Legacy alias for enable_public_ssh. If true, opens port 22 in both Security Group and NACL."
   type        = bool
   default     = null
 }

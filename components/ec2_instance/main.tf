@@ -55,7 +55,7 @@ locals {
   instance_type = var.instance_type != null ? var.instance_type : (local.arch_normalized == "arm64" ? "t4g.micro" : "t3.micro")
   ami_id        = var.ami_id != null ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
   key_name      = var.key_name != null && !var.create_key_pair && var.public_key == null ? var.key_name : try(aws_key_pair.this[0].key_name, null)
-  enable_ssh    = var.enable_ssh != null ? var.enable_ssh : (local.key_name != null)
+  enable_ssh    = var.enable_public_ssh || (var.enable_ssh == true)
 }
 
 # 2. Security Group with optional SSH ingress
@@ -85,7 +85,33 @@ resource "aws_security_group" "this" {
   tags = var.tags
 }
 
-# 3. EC2 Instance
+# 3. Network ACL Rule for SSH (Only created when enable_public_ssh is true)
+data "aws_network_acls" "subnet" {
+  count  = local.enable_ssh && var.network_acl_id == null ? 1 : 0
+  vpc_id = var.vpc_id
+  filter {
+    name   = "association.subnet-id"
+    values = [var.subnet_id]
+  }
+}
+
+locals {
+  target_nacl_id = var.network_acl_id != null ? var.network_acl_id : try(tolist(data.aws_network_acls.subnet[0].ids)[0], null)
+}
+
+resource "aws_network_acl_rule" "ssh" {
+  count          = local.enable_ssh && local.target_nacl_id != null ? 1 : 0
+  network_acl_id = local.target_nacl_id
+  rule_number    = var.nacl_ssh_rule_number
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = var.ssh_allowed_cidr_blocks[0]
+  from_port      = 22
+  to_port        = 22
+}
+
+# 4. EC2 Instance
 resource "aws_instance" "this" {
   ami                         = local.ami_id
   instance_type               = local.instance_type
@@ -94,6 +120,7 @@ resource "aws_instance" "this" {
   associate_public_ip_address = var.associate_public_ip_address
   vpc_security_group_ids      = [aws_security_group.this.id]
   iam_instance_profile        = var.iam_instance_profile
+  user_data                   = var.user_data
 
   root_block_device {
     volume_size           = var.volume_size

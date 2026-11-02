@@ -71,6 +71,30 @@ variable "user_data" {
   default     = null
 }
 
+variable "enable_ssm_public" {
+  description = "Enable AWS Systems Manager (SSM) for instances in public subnets. Automatically provisions IAM instance profile with AmazonSSMManagedInstanceCore."
+  type        = bool
+  default     = false
+}
+
+variable "enable_ssm_private" {
+  description = "Enable AWS Systems Manager (SSM) for instances in private subnets. Automatically provisions IAM instance profile and required VPC Interface Endpoints (ssm, ssmmessages, ec2messages) for private connectivity."
+  type        = bool
+  default     = false
+}
+
+variable "create_ssm_endpoints" {
+  description = "Whether to create VPC Interface Endpoints when enable_ssm_private is true. Set to false if the VPC already has SSM endpoints."
+  type        = bool
+  default     = true
+}
+
+variable "private_subnet_ids" {
+  description = "List of private subnet IDs for the SSM VPC Endpoints. If omitted, uses [var.subnet_id]."
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_public_ssh" {
   description = "If true, opens port 22 in both the Security Group and the subnet's Network ACL"
   type        = bool

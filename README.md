@@ -187,7 +187,39 @@ module "ec2_arm" {
 > ssh -i ec2-key.pem ec2-user@<ec2_public_ip>
 > ```
 
-**Option C: Use an existing AWS Key Pair or local public key**
+**Option C: AWS Systems Manager (SSM) in Public Subnet (No Port 22 Open)**
+```hcl
+module "ec2_ssm_public" {
+  source            = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
+  name              = "app-server-ssm"
+  vpc_id            = module.vpc.vpc_id
+  subnet_id         = module.vpc.public_subnet_ids[0]
+  enable_ssm_public = true # Automatically provisions IAM role with AmazonSSMManagedInstanceCore & public IP
+
+  # No open Port 22 required in Security Group or NACL!
+}
+```
+
+> **Connect via AWS CLI or AWS Console:**
+> ```bash
+> aws ssm start-session --target <instance_id>
+> ```
+
+**Option D: AWS Systems Manager (SSM) in Private Subnet (Zero Internet / No NAT Gateway Needed)**
+```hcl
+module "ec2_ssm_private" {
+  source               = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
+  name                 = "app-server-private"
+  vpc_id               = module.vpc.vpc_id
+  subnet_id            = module.vpc.private_subnet_ids[0]
+  private_subnet_ids   = module.vpc.private_subnet_ids
+  enable_ssm_private   = true # Provisions IAM role + 3 required SSM VPC Endpoints (ssm, ssmmessages, ec2messages)
+
+  # Completely private and isolated, no public IP, no NAT gateway needed!
+}
+```
+
+**Option E: Use an existing AWS Key Pair or local public key**
 ```hcl
 module "ec2" {
   source    = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"

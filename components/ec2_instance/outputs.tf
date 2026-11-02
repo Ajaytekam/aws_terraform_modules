@@ -44,3 +44,13 @@ output "ami_architecture" {
   description = "The architecture of the selected AMI"
   value       = local.arch_normalized
 }
+
+output "iam_instance_profile" {
+  description = "The IAM instance profile name attached to the instance"
+  value       = local.instance_profile
+}
+
+output "ssm_vpc_endpoint_ids" {
+  description = "Map of created SSM VPC Endpoint names to IDs (when enable_ssm_private = true)"
+  value       = { for k, v in aws_vpc_endpoint.ssm : k => v.id }
+}

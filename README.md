@@ -120,7 +120,7 @@ module "db_secret" {
 
 #### EC2 Instance
 - **Module:** `components/ec2_instance`
-- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, dynamic AMI resolution (**x86_64 / amd64** and **arm64 Graviton**), startup initialization script (`user_data`), and conditional Port 22 rules for **both Security Group and Network ACL (NACL)** when `enable_public_ssh = true`.
+- **Description:** Single EC2 instance with encrypted EBS root volume, optional auto-generated or custom SSH key pair, dynamic AMI resolution (**x86_64 / amd64** and **arm64 Graviton**), startup initialization script from file or inline commands (`user_data_file`, `start_script_file`, or `user_data`), and conditional Port 22 rules for **both Security Group and Network ACL (NACL)** when `enable_public_ssh = true`.
 
 **Option A: Auto-generate a private key pair with SSH & Init Script**
 ```hcl
@@ -240,6 +240,35 @@ module "ec2" {
 }
 ```
 
+**Option F: Bootstrap using a Start Script File (`user_data_file` or `start_script_file`)**
+```hcl
+module "ec2" {
+  source                  = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
+  name                    = "app-server"
+  vpc_id                  = module.vpc.vpc_id
+  subnet_id               = module.vpc.public_subnet_ids[0]
+  enable_public_ssh       = true
+  create_key_pair         = true
+
+  # Choice 1: Plain start script file
+  user_data_file          = "${path.module}/scripts/start.sh" # Or alias: start_script_file
+
+  # Choice 2: Templated start script with variables (rendered via templatefile)
+  # user_data_file        = "${path.module}/scripts/start.sh.tpl"
+  # user_data_vars        = {
+  #   app_port = 8080
+  #   env      = "production"
+  # }
+
+  # Optional: Recreate instance whenever the user_data script changes
+  # user_data_replace_on_change = true
+
+  tags = {
+    Environment = "prod"
+  }
+}
+```
+
 #### Application Load Balancer (ALB)
 - **Module:** `components/alb`
 - **Description:** Public/internal ALB, HTTP/HTTPS listener, target group, and ingress security group.
@@ -281,6 +310,9 @@ module "asg" {
   max_size              = 4
   desired_capacity      = 2
   volume_size           = 20
+
+  # Startup initialization script file (or use inline commands via user_data)
+  user_data_file        = "${path.module}/scripts/start.sh"
 
   tags = {
     Environment = "dev"

@@ -66,8 +66,32 @@ variable "public_key" {
 }
 
 variable "user_data" {
-  description = "User data script / initialization script to execute on first boot"
+  description = "User data script / initialization commands to execute on first boot (can also be a path to a script file)"
   type        = string
+  default     = null
+}
+
+variable "user_data_file" {
+  description = "Path to a start script / user data file to execute on first boot. Supports plain shell scripts or templated scripts."
+  type        = string
+  default     = null
+}
+
+variable "start_script_file" {
+  description = "Alias for user_data_file. Path to a start script file to execute on first boot."
+  type        = string
+  default     = null
+}
+
+variable "user_data_vars" {
+  description = "Optional map of variables to render into the user data template file"
+  type        = map(any)
+  default     = {}
+}
+
+variable "user_data_replace_on_change" {
+  description = "When used in combination with user_data or user_data_file, will recreate the instance if the user data script changes"
+  type        = bool
   default     = null
 }
 

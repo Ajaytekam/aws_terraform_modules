@@ -51,6 +51,27 @@ data "aws_ami" "amazon_linux_2023" {
 locals {
   instance_type = var.instance_type != null ? var.instance_type : (local.arch_normalized == "arm64" ? "t4g.micro" : "t3.micro")
   ami_id        = var.ami_id != null ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
+
+  # Resolve start script / user data from file, inline commands, or both
+  selected_user_data_file = var.user_data_file != null ? var.user_data_file : var.start_script_file
+
+  user_data_file_rendered = local.selected_user_data_file != null ? (
+    length(var.user_data_vars) > 0 ? templatefile(local.selected_user_data_file, var.user_data_vars) : file(local.selected_user_data_file)
+  ) : null
+
+  user_data_raw_rendered = var.user_data != null ? (
+    try(fileexists(var.user_data), false) ? (
+      length(var.user_data_vars) > 0 ? templatefile(var.user_data, var.user_data_vars) : file(var.user_data)
+    ) : var.user_data
+  ) : null
+
+  user_data_final = (
+    local.user_data_file_rendered != null && local.user_data_raw_rendered != null && local.user_data_file_rendered != local.user_data_raw_rendered ? (
+      "${local.user_data_file_rendered}\n${local.user_data_raw_rendered}"
+    ) : (
+      local.user_data_file_rendered != null ? local.user_data_file_rendered : local.user_data_raw_rendered
+    )
+  )
 }
 
 # 2. Launch Template (Instance blueprint)
@@ -68,7 +89,7 @@ resource "aws_launch_template" "this" {
     security_groups             = [aws_security_group.asg.id]
   }
 
-  user_data = var.user_data != null ? base64encode(var.user_data) : null
+  user_data = local.user_data_final != null ? base64encode(local.user_data_final) : null
 
   # Encrypted root storage
   block_device_mappings {

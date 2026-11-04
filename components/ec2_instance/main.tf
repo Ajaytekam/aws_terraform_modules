@@ -60,6 +60,27 @@ locals {
   enable_ssh          = var.enable_public_ssh || (var.enable_ssh == true)
   enable_ssm          = var.enable_ssm_public || var.enable_ssm_private
   associate_public_ip = var.associate_public_ip_address != null ? var.associate_public_ip_address : (var.enable_ssm_public ? true : (var.enable_ssm_private ? false : null))
+
+  # Resolve start script / user data from file, inline commands, or both
+  selected_user_data_file = var.user_data_file != null ? var.user_data_file : var.start_script_file
+
+  user_data_file_rendered = local.selected_user_data_file != null ? (
+    length(var.user_data_vars) > 0 ? templatefile(local.selected_user_data_file, var.user_data_vars) : file(local.selected_user_data_file)
+  ) : null
+
+  user_data_raw_rendered = var.user_data != null ? (
+    try(fileexists(var.user_data), false) ? (
+      length(var.user_data_vars) > 0 ? templatefile(var.user_data, var.user_data_vars) : file(var.user_data)
+    ) : var.user_data
+  ) : null
+
+  user_data_final = (
+    local.user_data_file_rendered != null && local.user_data_raw_rendered != null && local.user_data_file_rendered != local.user_data_raw_rendered ? (
+      "${local.user_data_file_rendered}\n${local.user_data_raw_rendered}"
+    ) : (
+      local.user_data_file_rendered != null ? local.user_data_file_rendered : local.user_data_raw_rendered
+    )
+  )
 }
 
 # 2. IAM Role & Instance Profile for AWS Systems Manager (SSM)
@@ -201,7 +222,8 @@ resource "aws_instance" "this" {
   associate_public_ip_address = local.associate_public_ip
   vpc_security_group_ids      = [aws_security_group.this.id]
   iam_instance_profile        = local.instance_profile
-  user_data                   = var.user_data
+  user_data                   = local.user_data_final
+  user_data_replace_on_change = var.user_data_replace_on_change
 
   root_block_device {
     volume_size           = var.volume_size

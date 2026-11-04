@@ -76,9 +76,27 @@ variable "volume_size" {
 }
 
 variable "user_data" {
-  description = "User data script to bootstrap instances"
+  description = "User data script to bootstrap instances (can also be a path to a script file)"
   type        = string
   default     = null
+}
+
+variable "user_data_file" {
+  description = "Path to a start script / user data file to bootstrap instances. Supports plain shell scripts or templated scripts."
+  type        = string
+  default     = null
+}
+
+variable "start_script_file" {
+  description = "Alias for user_data_file. Path to a start script file to bootstrap instances."
+  type        = string
+  default     = null
+}
+
+variable "user_data_vars" {
+  description = "Optional map of variables to render into the user data template file"
+  type        = map(any)
+  default     = {}
 }
 
 variable "iam_instance_profile" {

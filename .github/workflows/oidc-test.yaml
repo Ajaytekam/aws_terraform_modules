@@ -3,6 +3,7 @@ name: Test AWS OIDC Connection
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   aws-test:

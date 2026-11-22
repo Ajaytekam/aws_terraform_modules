@@ -39,7 +39,7 @@ locals {
   # Generate sub claim patterns with wildcards around names to support both standard and @id formats
   computed_sub_conditions = var.repository != "" ? [
     for branch in var.branches : (
-      branch == "*" ? "repo:${local.repo_owner}*/${local.repo_name}*:*" : "repo:${local.repo_owner}*/${local.repo_name}*:ref:refs/heads/${branch}"
+      branch == "*" ? "repo:${local.repo_owner}/${local.repo_name}:*" : "repo:${local.repo_owner}/${local.repo_name}:ref:refs/heads/${branch}"
     )
   ] : []
 

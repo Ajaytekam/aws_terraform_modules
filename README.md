@@ -689,6 +689,24 @@ module "github_oidc_existing" {
   ]
 }
 ```
+ 
+**Usage of create OIDC Provider variable :**   
+
+The other option is to set both variables off, so in that way it will check if OIDC provider exists or not then based on the result, will create or skip the provdier creation.
+
+```hcl
+module "github_oidc_existing" {
+  source     = "github.com/Ajaytekam/aws_terraform_modules//components/iam_oidc?ref=main"
+  role_name  = "github-actions-deploy-role"
+  repository = "Ajaytekam/aws_terraform_modules"
+  branches   = ["main"]
+
+  policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  ]
+}
+```
+ 
 
 ---
 

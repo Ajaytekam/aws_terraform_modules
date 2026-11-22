@@ -604,24 +604,59 @@ module "iam_group" {
 ```
 
 #### GitHub Actions OIDC Provider & Role
-
 - **Module:** `components/iam_oidc`
 - **Description:** Registers GitHub as an OIDC Identity Provider with dynamic TLS thumbprint verification, creates an IAM Role with a scoped trust policy (supporting standard names and immutable `@id` subject tokens), and attaches permission policies for keyless CI/CD.
+- **Smart Existence Check:** When `create_oidc_provider = true`, the module automatically checks whether `token.actions.githubusercontent.com` already exists in your AWS account. If it already exists, creation is safely skipped and the existing provider is reused, completely avoiding AWS `EntityAlreadyExists` errors.
 
+**Option A: Custom Policy Deployment (Recommended with `custom_role_policy_json`)**
 ```hcl
+# 1. Define custom scoped permissions using an IAM policy document
+data "aws_iam_policy_document" "ci_deploy_permissions" {
+  statement {
+    sid    = "AllowS3FrontendDeploy"
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:ListBucket",
+      "s3:DeleteObject"
+    ]
+    resources = [
+      "arn:aws:s3:::my-frontend-bucket",
+      "arn:aws:s3:::my-frontend-bucket/*"
+    ]
+  }
+
+  statement {
+    sid    = "AllowECRImagePush"
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken",
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:BatchGetImage",
+      "ecr:PutImage",
+      "ecr:InitiateLayerUpload",
+      "ecr:UploadLayerPart",
+      "ecr:CompleteLayerUpload"
+    ]
+    resources = ["*"]
+  }
+}
+
+# 2. Deploy OIDC provider and attach the custom inline policy
 module "github_oidc" {
   source     = "github.com/Ajaytekam/aws_terraform_modules//components/iam_oidc?ref=main"
   role_name  = "github-actions-deploy-role"
   repository = "Ajaytekam/aws_terraform_modules"
   branches   = ["main"] # Or ["*"] to allow all branches
 
-  # Set to false if token.actions.githubusercontent.com is already registered in the account
-  create_oidc_provider = true
+  # Automatically checks if provider exists; creates if absent, reuses if already present
+  create_oidc_provider    = true
+  check_existing_provider = true # Default is true
 
-  # Attach managed policies for CI/CD tasks
-  policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-  ]
+  # Attach the custom inline policy JSON
+  custom_role_policy_json = data.aws_iam_policy_document.ci_deploy_permissions.json
 
   tags = {
     Environment = "dev"
@@ -630,6 +665,28 @@ module "github_oidc" {
 
 output "github_oidc_role_arn" {
   value = module.github_oidc.role_arn
+}
+
+output "oidc_provider_created" {
+  value = module.github_oidc.oidc_provider_created # false if already existed, true if created
+}
+```
+
+**Option B: Pure Terraform (Skip Provider Creation Manually)**
+```hcl
+module "github_oidc_existing" {
+  source     = "github.com/Ajaytekam/aws_terraform_modules//components/iam_oidc?ref=main"
+  role_name  = "github-actions-deploy-role"
+  repository = "Ajaytekam/aws_terraform_modules"
+  branches   = ["main"]
+
+  # Explicitly skip provider creation without running external script checks
+  create_oidc_provider = false
+  # existing_oidc_provider_arn is optional: automatically computed as arn:aws:iam::<account_id>:oidc-provider/token.actions.githubusercontent.com
+
+  policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  ]
 }
 ```
 

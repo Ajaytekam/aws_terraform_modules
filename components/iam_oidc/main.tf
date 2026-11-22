@@ -6,30 +6,52 @@ terraform {
     tls = {
       source = "hashicorp/tls"
     }
+    external = {
+      source = "hashicorp/external"
+    }
   }
 }
 
 data "aws_caller_identity" "current" {}
 
-# 1. Fetch GitHub's OIDC TLS Certificate Thumbprint dynamically
-data "tls_certificate" "github" {
-  count = var.create_oidc_provider ? 1 : 0
-  url   = "https://token.actions.githubusercontent.com/.well-known/openid-configuration"
-}
+# 1. Dynamically check if GitHub OIDC provider already exists in this AWS account
+data "external" "check_provider" {
+  count   = var.create_oidc_provider && var.check_existing_provider ? 1 : 0
+  program = ["python3", "${path.module}/check_provider.py"]
 
-# 2. Register GitHub as an OIDC Identity Provider in AWS IAM (if not already existing)
-resource "aws_iam_openid_connect_provider" "github" {
-  count           = var.create_oidc_provider ? 1 : 0
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.github[0].certificates[0].sha1_fingerprint]
-  tags            = var.tags
+  query = {
+    account_id = data.aws_caller_identity.current.account_id
+  }
 }
 
 locals {
-  # Resolve OIDC Provider ARN (either newly created or existing)
+  # Determine whether the provider already exists in the account
+  provider_already_exists = (
+    var.create_oidc_provider && var.check_existing_provider
+    ? try(data.external.check_provider[0].result["exists"] == "true", false)
+    : false
+  )
+
+  # Only create the provider if requested AND it does not already exist
+  should_create_provider = var.create_oidc_provider && !local.provider_already_exists
+
+  # Resolve default predictable OIDC Provider ARN
   default_provider_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
-  oidc_provider_arn    = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : (var.existing_oidc_provider_arn != null ? var.existing_oidc_provider_arn : local.default_provider_arn)
+
+  # Resolve OIDC Provider ARN (from newly created resource, external check, explicit override, or default)
+  oidc_provider_arn = (
+    local.should_create_provider
+    ? aws_iam_openid_connect_provider.github[0].arn
+    : (
+      var.existing_oidc_provider_arn != null
+      ? var.existing_oidc_provider_arn
+      : (
+        local.provider_already_exists
+        ? data.external.check_provider[0].result["arn"]
+        : local.default_provider_arn
+      )
+    )
+  )
 
   # Parse repository owner and name (handles owner/repo format)
   repo_split = length(split("/", var.repository)) == 2 ? split("/", var.repository) : [var.repository, ""]
@@ -39,7 +61,7 @@ locals {
   # Generate sub claim patterns with wildcards around names to support both standard and @id formats
   computed_sub_conditions = var.repository != "" ? [
     for branch in var.branches : (
-      branch == "*" ? "repo:${local.repo_owner}/${local.repo_name}:*" : "repo:${local.repo_owner}/${local.repo_name}:ref:refs/heads/${branch}"
+      branch == "*" ? "repo:${local.repo_owner}*/${local.repo_name}*:*" : "repo:${local.repo_owner}*/${local.repo_name}*:ref:refs/heads/${branch}"
     )
   ] : []
 
@@ -47,7 +69,22 @@ locals {
   sub_conditions = length(var.sub_patterns) > 0 ? var.sub_patterns : local.computed_sub_conditions
 }
 
-# 3. Create IAM Role with scoped Trust Policy
+# 2. Fetch GitHub's OIDC TLS Certificate Thumbprint dynamically (only if creating provider)
+data "tls_certificate" "github" {
+  count = local.should_create_provider ? 1 : 0
+  url   = "https://token.actions.githubusercontent.com/.well-known/openid-configuration"
+}
+
+# 3. Register GitHub as an OIDC Identity Provider in AWS IAM (only if not already existing)
+resource "aws_iam_openid_connect_provider" "github" {
+  count           = local.should_create_provider ? 1 : 0
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.github[0].certificates[0].sha1_fingerprint]
+  tags            = var.tags
+}
+
+# 4. Create IAM Role with scoped Trust Policy
 resource "aws_iam_role" "github_actions" {
   name                 = var.role_name
   description          = var.role_description
@@ -76,14 +113,14 @@ resource "aws_iam_role" "github_actions" {
   })
 }
 
-# 4. Attach Managed Policies to Role
+# 5. Attach Managed Policies to Role
 resource "aws_iam_role_policy_attachment" "managed" {
   count      = length(var.policy_arns)
   role       = aws_iam_role.github_actions.name
   policy_arn = var.policy_arns[count.index]
 }
 
-# 5. Attach optional custom inline policy
+# 6. Attach optional custom inline policy
 resource "aws_iam_role_policy" "custom" {
   count  = var.custom_role_policy_json != null ? 1 : 0
   name   = "${var.role_name}-inline-policy"

@@ -4,8 +4,14 @@ variable "create_oidc_provider" {
   default     = true
 }
 
+variable "check_existing_provider" {
+  description = "Whether to automatically check if the GitHub OIDC provider already exists in AWS IAM before attempting creation. If found, skips provider creation and reuses the existing one without error."
+  type        = bool
+  default     = true
+}
+
 variable "existing_oidc_provider_arn" {
-  description = "ARN of an existing GitHub OIDC provider. Used only if create_oidc_provider is false. If omitted, constructed automatically."
+  description = "ARN of an existing GitHub OIDC provider. Used if create_oidc_provider is false or provider already exists. If omitted, constructed automatically."
   type        = string
   default     = null
 }

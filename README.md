@@ -603,6 +603,36 @@ module "iam_group" {
 }
 ```
 
+#### GitHub Actions OIDC Provider & Role
+
+- **Module:** `components/iam_oidc`
+- **Description:** Registers GitHub as an OIDC Identity Provider with dynamic TLS thumbprint verification, creates an IAM Role with a scoped trust policy (supporting standard names and immutable `@id` subject tokens), and attaches permission policies for keyless CI/CD.
+
+```hcl
+module "github_oidc" {
+  source     = "github.com/Ajaytekam/aws_terraform_modules//components/iam_oidc?ref=main"
+  role_name  = "github-actions-deploy-role"
+  repository = "Ajaytekam/aws_terraform_modules"
+  branches   = ["main"] # Or ["*"] to allow all branches
+
+  # Set to false if token.actions.githubusercontent.com is already registered in the account
+  create_oidc_provider = true
+
+  # Attach managed policies for CI/CD tasks
+  policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  ]
+
+  tags = {
+    Environment = "dev"
+  }
+}
+
+output "github_oidc_role_arn" {
+  value = module.github_oidc.role_arn
+}
+```
+
 ---
 
 ### 9. Monitoring & Observability

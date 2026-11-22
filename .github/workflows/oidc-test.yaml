@@ -27,7 +27,6 @@ jobs:
           echo "=== DECODED OIDC JWT PAYLOAD ==="
           echo "$TOKEN" | cut -d. -f2 | base64 --decode | jq '{iss, aud, sub, repository, ref}'
 
-
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -37,4 +36,3 @@ jobs:
       - name: Verify Authentication
         run: |
           aws sts get-caller-identity
-

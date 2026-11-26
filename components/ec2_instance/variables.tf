@@ -149,6 +149,50 @@ variable "ssh_allowed_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "ingress_rules" {
+  description = "List of custom ingress rules to add to the EC2 instance security group"
+  type = list(object({
+    description      = optional(string, "Custom ingress rule")
+    from_port        = number
+    to_port          = number
+    protocol         = optional(string, "tcp")
+    cidr_blocks      = optional(list(string), [])
+    ipv6_cidr_blocks = optional(list(string), [])
+    security_groups  = optional(list(string), [])
+    prefix_list_ids  = optional(list(string), [])
+    self             = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "egress_rules" {
+  description = "List of custom egress rules to add to the EC2 instance security group. When provided and allow_all_egress is null, replaces the default allow-all outbound rule."
+  type = list(object({
+    description      = optional(string, "Custom egress rule")
+    from_port        = number
+    to_port          = number
+    protocol         = optional(string, "-1")
+    cidr_blocks      = optional(list(string), [])
+    ipv6_cidr_blocks = optional(list(string), [])
+    security_groups  = optional(list(string), [])
+    prefix_list_ids  = optional(list(string), [])
+    self             = optional(bool, false)
+  }))
+  default = []
+}
+
+variable "allow_all_egress" {
+  description = "Whether to include the default allow-all outbound rule (0.0.0.0/0). Defaults to true when egress_rules is empty, or false when custom egress_rules are provided."
+  type        = bool
+  default     = null
+}
+
+variable "additional_security_group_ids" {
+  description = "Optional list of existing Security Group IDs to attach to the EC2 instance in addition to the module-created security group"
+  type        = list(string)
+  default     = []
+}
+
 variable "associate_public_ip_address" {
   description = "Whether to associate a public IP address with the instance"
   type        = bool

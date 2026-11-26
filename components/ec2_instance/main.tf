@@ -77,7 +77,7 @@ locals {
   user_data_final = (
     local.user_data_file_rendered != null && local.user_data_raw_rendered != null && local.user_data_file_rendered != local.user_data_raw_rendered ? (
       "${local.user_data_file_rendered}\n${local.user_data_raw_rendered}"
-    ) : (
+      ) : (
       local.user_data_file_rendered != null ? local.user_data_file_rendered : local.user_data_raw_rendered
     )
   )
@@ -115,7 +115,8 @@ resource "aws_iam_instance_profile" "ssm" {
 }
 
 locals {
-  instance_profile = var.iam_instance_profile != null ? var.iam_instance_profile : (local.enable_ssm ? aws_iam_instance_profile.ssm[0].name : null)
+  instance_profile      = var.iam_instance_profile != null ? var.iam_instance_profile : (local.enable_ssm ? aws_iam_instance_profile.ssm[0].name : null)
+  enable_default_egress = var.allow_all_egress != null ? var.allow_all_egress : length(var.egress_rules) == 0
 }
 
 # 3. Security Group for Instance
@@ -135,11 +136,45 @@ resource "aws_security_group" "this" {
     }
   }
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  dynamic "ingress" {
+    for_each = var.ingress_rules
+    content {
+      description      = ingress.value.description
+      from_port        = ingress.value.from_port
+      to_port          = ingress.value.to_port
+      protocol         = ingress.value.protocol
+      cidr_blocks      = length(ingress.value.cidr_blocks) > 0 ? ingress.value.cidr_blocks : null
+      ipv6_cidr_blocks = length(ingress.value.ipv6_cidr_blocks) > 0 ? ingress.value.ipv6_cidr_blocks : null
+      security_groups  = length(ingress.value.security_groups) > 0 ? ingress.value.security_groups : null
+      prefix_list_ids  = length(ingress.value.prefix_list_ids) > 0 ? ingress.value.prefix_list_ids : null
+      self             = ingress.value.self
+    }
+  }
+
+  dynamic "egress" {
+    for_each = local.enable_default_egress ? [1] : []
+    content {
+      description = "Allow all outbound traffic"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+  dynamic "egress" {
+    for_each = var.egress_rules
+    content {
+      description      = egress.value.description
+      from_port        = egress.value.from_port
+      to_port          = egress.value.to_port
+      protocol         = egress.value.protocol
+      cidr_blocks      = length(egress.value.cidr_blocks) > 0 ? egress.value.cidr_blocks : null
+      ipv6_cidr_blocks = length(egress.value.ipv6_cidr_blocks) > 0 ? egress.value.ipv6_cidr_blocks : null
+      security_groups  = length(egress.value.security_groups) > 0 ? egress.value.security_groups : null
+      prefix_list_ids  = length(egress.value.prefix_list_ids) > 0 ? egress.value.prefix_list_ids : null
+      self             = egress.value.self
+    }
   }
 
   tags = var.tags
@@ -220,7 +255,7 @@ resource "aws_instance" "this" {
   subnet_id                   = var.subnet_id
   key_name                    = local.key_name
   associate_public_ip_address = local.associate_public_ip
-  vpc_security_group_ids      = [aws_security_group.this.id]
+  vpc_security_group_ids      = concat([aws_security_group.this.id], var.additional_security_group_ids)
   iam_instance_profile        = local.instance_profile
   user_data                   = local.user_data_final
   user_data_replace_on_change = var.user_data_replace_on_change

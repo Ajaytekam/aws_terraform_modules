@@ -4,8 +4,13 @@ output "instance_id" {
 }
 
 output "security_group_id" {
-  description = "The ID of the security group"
+  description = "The ID of the security group created by this module"
   value       = aws_security_group.this.id
+}
+
+output "security_group_ids" {
+  description = "All security group IDs attached to the EC2 instance"
+  value       = aws_instance.this.vpc_security_group_ids
 }
 
 output "private_ip" {

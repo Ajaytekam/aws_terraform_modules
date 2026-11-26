@@ -269,6 +269,56 @@ module "ec2" {
 }
 ```
 
+**Option G: Custom Security Group Ingress & Egress Rules**
+```hcl
+module "ec2_web" {
+  source            = "github.com/Ajaytekam/aws_terraform_modules//components/ec2_instance?ref=main"
+  name              = "web-server"
+  vpc_id            = module.vpc.vpc_id
+  subnet_id         = module.vpc.public_subnet_ids[0]
+  enable_public_ssh = true
+
+  # Custom inbound rules (added alongside SSH if enable_public_ssh = true)
+  ingress_rules = [
+    {
+      description = "Allow HTTP"
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    },
+    {
+      description = "Allow HTTPS"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+
+  # Optional custom outbound rules (replaces default 0.0.0.0/0 allow-all unless allow_all_egress = true)
+  egress_rules = [
+    {
+      description = "Allow outbound HTTPS"
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  ]
+
+  # Optional: keep default allow-all outbound rule in addition to custom egress_rules
+  # allow_all_egress = true
+
+  # Optional: attach existing security groups as well
+  # additional_security_group_ids = [module.vpc.baseline_security_group_id]
+
+  tags = {
+    Environment = "prod"
+  }
+}
+```
+
 #### Application Load Balancer (ALB)
 - **Module:** `components/alb`
 - **Description:** Public/internal ALB, HTTP/HTTPS listener, target group, and ingress security group.

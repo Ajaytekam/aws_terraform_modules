@@ -2,6 +2,46 @@
 
 A modular collection of production-ready, reusable AWS Terraform modules located in the `components/` directory.
 
+### Contents
+
+- [Provider Configuration](#provider-configuration)
+- [Available Modules & Sample Usages](#available-modules--sample-usages)
+  - [1. Networking & VPC](#1-networking--vpc) (`components/vpc`)
+  - [2. Storage & Security](#2-storage--security)
+    - [S3 Bucket](#s3-bucket) (`components/s3_buckets`)
+    - [AWS KMS Key](#aws-kms-key) (`components/kms`)
+    - [AWS Secrets Manager](#aws-secrets-manager) (`components/secret_manager`)
+  - [3. Compute & Auto-Scaling](#3-compute--auto-scaling)
+    - [EC2 Instance](#ec2-instance) (`components/ec2_instance`)
+    - [Application Load Balancer (ALB)](#application-load-balancer-alb) (`components/alb`)
+    - [Auto Scaling Group (ASG)](#auto-scaling-group-asg) (`components/asg`)
+  - [4. Database](#4-database)
+    - [Relational Database Service (RDS)](#relational-database-service-rds) (`components/rds`)
+  - [5. Containers & Serverless](#5-containers--serverless)
+    - [AWS Lambda Function](#aws-lambda-function) (`components/lambda_functions`)
+    - [Amazon ECR (Elastic Container Registry)](#amazon-ecr-elastic-container-registry) (`components/ecr`)
+    - [Amazon EKS (Elastic Kubernetes Service)](#amazon-eks-elastic-kubernetes-service) (`components/eks`)
+  - [6. Edge & Web Services](#6-edge--web-services)
+    - [Amazon API Gateway (HTTP API)](#amazon-api-gateway-http-api) (`components/api_gateway`)
+    - [Amazon CloudFront Distribution](#amazon-cloudfront-distribution) (`components/cloudfront`)
+    - [Amazon Route 53 DNS Record](#amazon-route-53-dns-record) (`components/route53`)
+    - [AWS Amplify](#aws-amplify) (`components/amplify`)
+  - [7. Messaging & Event-Driven Architecture](#7-messaging--event-driven-architecture)
+    - [Amazon SQS (Simple Queue Service)](#amazon-sqs-simple-queue-service) (`components/sqs`)
+    - [Amazon SNS (Simple Notification Service)](#amazon-sns-simple-notification-service) (`components/sns`)
+    - [Amazon EventBridge](#amazon-eventbridge) (`components/eventbridge`)
+  - [8. Identity & Access Management (IAM)](#8-identity--access-management-iam)
+    - [IAM Users](#iam-users) (`components/iam_user`)
+    - [IAM Custom Policy](#iam-custom-policy) (`components/iam_policy`)
+    - [IAM Group](#iam-group) (`components/iam_group`)
+    - [GitHub Actions OIDC Provider & Role](#github-actions-oidc-provider--role) (`components/iam_oidc`)
+  - [9. Monitoring & Observability](#9-monitoring--observability)
+    - [Amazon CloudWatch](#amazon-cloudwatch) (`components/cloudwatch`)
+- [Complete End-to-End Architecture Example](#complete-end-to-end-architecture-example)
+- [Standard Terraform Workflow](#standard-terraform-workflow)
+
+---
+
 ### Provider Configuration
 
 Create a `provider.tf` file in your root directory:
